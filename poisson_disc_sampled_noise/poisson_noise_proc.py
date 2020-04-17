@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from scipy import stats
+#from sklearn.preprocessing import normalize
+import matplotlib.cm as cm
+
 # Procedural algorithm for the generation of two-dimensional Poission-disc
 # sampled ("blue") noise. For mathematical details, please see the blog
 # article at https://scipython.com/blog/poisson-disc-sampling-in-python/
@@ -11,7 +15,7 @@ import matplotlib.pyplot as plt
 k = 30
 
 # Minimum distance between samples
-r = 1.7
+r = 1.7 #1.7 #0.5 #1.0 #1.7
 
 width, height = 60, 45
 
@@ -104,6 +108,30 @@ def get_point(k, refpt):
     # We failed to find a suitable point in the vicinity of refpt.
     return False
 
+class UniformNoise():
+    """A class for generating uniformly distributed, 2D noise."""
+
+    def __init__(self, width=50, height=50, n=None):
+        """Initialise the size of the domain and number of points to sample."""
+
+        self.width, self.height = width, height
+        if n is None:
+            n = int(width * height)
+        self.n = n
+
+    def reset(self):
+        pass
+
+    def sample(self):
+        return np.array([np.random.uniform(0, width, size=self.n),
+                         np.random.uniform(0, height, size=self.n)]).T
+
+n = int(width * height / np.pi / a**2)
+uniform_noise = UniformNoise(width, height, n) 
+print(uniform_noise.sample().shape)
+uni_x = uniform_noise.sample()[:,0]
+uni_y = uniform_noise.sample()[:,1]       
+
 # Pick a random point to start with.
 pt = (np.random.uniform(0, width), np.random.uniform(0, height))
 samples = [pt]
@@ -131,11 +159,104 @@ while active:
         # We had to give up looking for valid points near refpt, so remove it
         # from the list of "active" points.
         active.remove(idx)
+#print(samples)
+def column(matrix, i):
+    return [row[i] for row in matrix]
 
-plt.scatter(*zip(*samples), color='r', alpha=0.6, lw=0)
+datax = column(samples,0)
+datay = column(samples,1)
+data = np.array(samples)
+
+kde_uni = stats.gaussian_kde(uniform_noise.sample().T)
+density_uni = kde_uni(uniform_noise.sample().T)
+#normalize_density = density/max(density)
+
+kde = stats.gaussian_kde(data.T)
+density = kde(data.T)
+normalize_density = density/max(density)
+
+
+
+cmap =  cm.jet #cm.hot #'Blues'
+
+
+counts, xedges, yedges = np.histogram2d(datax, datay, bins=(60, 45))
+#print(counts.shape)
+#print(np.amax(counts))
+#print(counts)
+xidx = np.clip(np.digitize(datax, xedges), 0, counts.shape[0]-1)
+yidx = np.clip(np.digitize(datay, yedges), 0, counts.shape[1]-1)
+CC = counts[xidx, yidx]
+#CC = counts
+
+#print(data)
+plt.figure(1)
+plt.scatter(data[:,0],data[:,1], c=normalize_density,  s=1, cmap=cmap)
+plt.colorbar()
+plt.xlim(0, width)
+plt.ylim(0, height)
+plt.axis('off')
+plt.interactive(True)
+plt.show()
+
+
+plt.figure(2)
+plt.scatter(data[:,0],data[:,1], c=density,  s=1, cmap=cmap)
+plt.colorbar()
+plt.xlim(0, width)
+plt.ylim(0, height)
+plt.axis('off')
+plt.show()
+
+plt.figure(3)
+plt.hist2d(data[:,0],data[:,1], density = True, bins=(60, 45),cmap=cmap) #density = True??
+plt.colorbar()
+plt.show()
+
+
+plt.figure(4)
+plt.scatter(datax,datay, c=CC,  s=1, cmap=cmap)
+plt.colorbar()
+plt.xlim(0, width)
+plt.ylim(0, height)
+plt.axis('off')
+plt.show()
+
+plt.figure(5)
+plt.hexbin(datax, datay, gridsize=(60, 45), cmap=cmap)
+plt.colorbar()
+plt.show()
+
+plt.figure(6)
+plt.hist2d(uni_x,uni_y, density = True, bins=(60, 45),cmap=cmap) #density = True??
+plt.colorbar()
+plt.show()
+
+plt.figure(7)
+plt.scatter(uni_x,uni_y, color='r', s=5, alpha=0.6, lw=0)
+#plt.scatter(*zip(*samples), color='r', alpha=0.6, lw=0)
+plt.xlim(0, width)
+plt.ylim(0, height)
+plt.axis('off')
+plt.show()
+
+plt.figure(8)
+plt.scatter(uni_x,uni_y, c=density_uni,  s=1, cmap=cmap)
+#plt.scatter(datax[:min(len(uni_x),len(datax))],datay[:min(len(uni_y),len(datay))], c=density_uni,  s=1, cmap=cmap)
+plt.colorbar()
+plt.xlim(0, width)
+plt.ylim(0, height)
+plt.axis('off')
+plt.show()
+
+
+
+plt.figure(9)
+plt.scatter(datax,datay, color='r', s=5, alpha=0.6, lw=0)
+#plt.scatter(*zip(*samples), color='r', alpha=0.6, lw=0)
 plt.xlim(0, width)
 plt.ylim(0, height)
 plt.axis('off')
 plt.savefig('poisson.png')
+plt.interactive(False)
 plt.show()
-
